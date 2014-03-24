@@ -34,7 +34,12 @@ class SensorDataAPI {
 			$this->renderError('Start or stop timestamp not correctly set');
 		}
 
-		$numberOfPoints = 10;
+		$numberOfPoints = intval($_GET['numberOfPoints']);
+		if ($numberOfPoints < 1) {
+			$this->renderError('Number of points must be set, and be larger than 1');
+		}
+
+
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
 		$endTime = DateTime::createFromFormat('U', $endTimestamp);
 
