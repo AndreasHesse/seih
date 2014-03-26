@@ -19,12 +19,12 @@ class DMIDataAPI extends ApiBaseClass {
 			$this->renderError('HomeID must be set');
 		}
 
-		$sensorNames = ($_GET['sensorNames']);
-		if ($sensorNames == '') {
-			$this->renderError('Sensornames must be set');
+		$metricNames = isset($_GET['metricNames']) ? $_GET['metricNames'] : '';
+		if ($metricNames == '') {
+			$this->renderError('Metricnames must be set');
 		}
 
-		$sensorNames = explode(',', $sensorNames);
+		$metricNames = explode(',', $metricNames);
 
 		$startTimestamp = intval($_GET['startTimestamp']);
 		$endTimestamp = intval($_GET['endTimestamp']);
@@ -44,17 +44,17 @@ class DMIDataAPI extends ApiBaseClass {
 			'statusCode' => 200,
 			'startTime' => $startTime->format('d/m-Y H:i'),
 			'endTime' => $endTime->format('d/m-Y H:i'),
-			'sensors' => $sensorNames,
+			'metrics' => $metricNames,
 			'stationId' => $stationId,
 			'numberOfPoints' => $numberOfPoints,
 		);
 
-		foreach ($sensorNames as $sensorName) {
-			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $stationId, $sensorName);
+		foreach ($metricNames as $metricName) {
+			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $stationId, $metricName);
 			if ($numberOfPoints > 0) {
-				$result['data'][$sensorName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
 			} else {
-				$result['data'][$sensorName] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
 			}
 		}
 
@@ -69,10 +69,10 @@ class DMIDataAPI extends ApiBaseClass {
 	 * @param DateTime $startTime
 	 * @param DateTime $endTime
 	 * @param string $stationId
-	 * @param string $sensorName
+	 * @param string $metricName
 	 * @return array
 	 */
-	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $stationId, $sensorName) {
+	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $stationId, $metricName) {
 		$this->initMongoConnection();
 		$db = $this->mongoHandle->selectDB($this->configuration['mongo']['database']);
 
@@ -86,7 +86,7 @@ class DMIDataAPI extends ApiBaseClass {
 		$res = $db->dmi->find($query);
 		$result = array();
 		foreach($res as $row) {
-			$result[$row['date']->sec] = $row[$sensorName];
+			$result[$row['date']->sec] = $row[$metricName];
 		}
 		return $result;
 	}
