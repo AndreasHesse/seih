@@ -13,7 +13,7 @@ class SensorDataAPI extends ApiBaseClass {
 			$this->renderError('HomeID must be set');
 		}
 
-		$sensorNames = ($_GET['sensorNames']);
+		$sensorNames = isset($_GET['sensorNames']) ? $_GET['sensorNames'] : '';
 		if ($sensorNames == '') {
 			$this->renderError('Sensornames must be set');
 		}
@@ -81,7 +81,6 @@ class SensorDataAPI extends ApiBaseClass {
 	protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId) {
 		//@todo: Determine how to fetch the data, from MySQL or Mongo depending on the interval needed
 		return $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
-
 		return $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
 	}
 

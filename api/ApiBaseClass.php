@@ -46,7 +46,7 @@ abstract class ApiBaseClass {
 		$res = $typo3Db->query($frontendUserSql);
 		$user = $res->fetch(PDO::FETCH_ASSOC);
 		if ($user) {
-			return $user['homeid'];
+			return intval($user['homeid']);
 		}
 		return 0;
 	}
@@ -90,6 +90,7 @@ abstract class ApiBaseClass {
 	 * @param $message
 	 */
 	protected function renderError($message, $statusCode = 500) {
+		header(sprintf('HTTP/1.0 %d %s', $statusCode, $message));
 		$data = array(
 			'statusCode' => $statusCode,
 			'errorMessage' => $message
