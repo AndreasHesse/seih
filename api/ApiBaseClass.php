@@ -21,7 +21,7 @@ abstract class ApiBaseClass {
 	/**
 	 * @var array
 	 */
-	protected $knownIpAddresses = array('127.0.0.1', '109.202.148.9');
+	protected $knownIpAddresses = array('127.0.0.1', '109.202.148.90');
 
 	/**
 	 *
@@ -37,7 +37,7 @@ abstract class ApiBaseClass {
 	 * Find the needed homeID. If IP is known, tage from GET variable, otherwise look into session.
 	 */
 	public function getHomeId() {
-		if (in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
+		if (intval($_GET['homeId']) > 0 && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
 			return intval($_GET['homeId']);
 		} else {
 			return intval($_SESSION['userdata']['user']['homeid']);
