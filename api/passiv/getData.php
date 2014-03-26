@@ -28,10 +28,6 @@ class SensorDataAPI extends ApiBaseClass {
 		}
 
 		$numberOfPoints = intval($_GET['numberOfPoints']);
-		if ($numberOfPoints < 1) {
-			$this->renderError('Number of points must be set, and be larger than 1');
-		}
-
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
 		$endTime = DateTime::createFromFormat('U', $endTimestamp);
@@ -49,7 +45,11 @@ class SensorDataAPI extends ApiBaseClass {
 		$result['data'] = array();
 		foreach ($sensorNames as $sensorName) {
 			$sensorData = $this->getDataFromStorage($startTime, $endTime, $sensorName, $homeId);
-			$result['data'][$sensorName] = $this->transformData($this->mapDataToBins($bins, $sensorData));
+			if ($numberOfPoints > 0) {
+				$result['data'][$sensorName] = $this->transformData($this->mapDataToBins($bins, $sensorData));
+			} else {
+				$result['data'][$sensorName] = $this->transformData($sensorData);
+			}
 		}
 		$rendertimeEnd = microtime(TRUE);
 		$result['querytimeInSeconds'] = $rendertimeEnd - $rendertimeStart;
@@ -81,6 +81,7 @@ class SensorDataAPI extends ApiBaseClass {
 	protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId) {
 		//@todo: Determine how to fetch the data, from MySQL or Mongo depending on the interval needed
 		return $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
+
 		return $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
 	}
 
@@ -112,8 +113,9 @@ class SensorDataAPI extends ApiBaseClass {
 	 * @return array
 	 */
 	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $sensorName, $homeId) {
-		$m = new MongoClient('zeeman');
-		$db = $m->selectDB('seih');
+		$this->initMongoConnection();
+		$db = $this->mongoHandle->selectDB($this->configuration['mongo']['database']);
+
 		$query = array (
 			'homeId' => $homeId,
 			'sensor' => $sensorName,

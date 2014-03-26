@@ -34,9 +34,6 @@ class DMIDataAPI extends ApiBaseClass {
 		}
 
 		$numberOfPoints = intval($_GET['numberOfPoints']);
-		if ($numberOfPoints < 1) {
-			$this->renderError('Number of points must be set, and be larger than 1');
-		}
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
 		$endTime = DateTime::createFromFormat('U', $endTimestamp);
@@ -54,7 +51,11 @@ class DMIDataAPI extends ApiBaseClass {
 
 		foreach ($sensorNames as $sensorName) {
 			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $stationId, $sensorName);
-			$result['data'][$sensorName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+			if ($numberOfPoints > 0) {
+				$result['data'][$sensorName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+			} else {
+				$result['data'][$sensorName] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+			}
 		}
 
 		$rendertimeEnd = microtime(TRUE);
@@ -72,8 +73,9 @@ class DMIDataAPI extends ApiBaseClass {
 	 * @return array
 	 */
 	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $stationId, $sensorName) {
-		$m = new MongoClient('zeeman');
-		$db = $m->selectDB('seih');
+		$this->initMongoConnection();
+		$db = $this->mongoHandle->selectDB($this->configuration['mongo']['database']);
+
 		$query = array (
 			'st' => (string)$stationId,
 			'date' => array(

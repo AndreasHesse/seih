@@ -49,7 +49,10 @@ abstract class ApiBaseClass {
 	 *
 	 */
 	public function initMongoConnection() {
+		if ($this->mongoHandle === NULL) {
+			$this->mongoHandle = new MongoClient($this->configuration['mongo']['hostname']);
 
+		}
 	}
 
 	/**
@@ -115,6 +118,39 @@ abstract class ApiBaseClass {
 	}
 
 	/**
+	 * Given a evaluation point and a discrete (with ordered keys) dataset,
+	 * return the approximate value at the binValue. If the dataset is numeric, it uses
+	 * simple interpolation, otherwise, it chooses the nearest neighbour. It checks the first element of $sensorData
+	 *
+	 * @param $evaluationPoint
+	 * @param $sensorData
+	 */
+	protected function evaluateAtPoint($evaluationPoint, $sensorData) {
+		if (count($sensorData) == 0) {
+			return 0;
+		}
+		if (is_numeric(current($sensorData))) {
+			return $this->interpolate($evaluationPoint, $sensorData);
+		}
+		return $this->evaluateAtNearestNeighbour($evaluationPoint, $sensorData);
+	}
+
+	/**
+	 * @param $binValue
+	 * @param $sensorData
+	 */
+	protected function evaluateAtNearestNeighbour($evaluationPoint, $sensorData) {
+		$neighbours = $this->findNeighbours($evaluationPoint, array_keys($data));
+		if (count($neighbours) !== 2) {
+			// Return 0 since, we have no points to actually interpolate
+			return 0;
+		}
+		$distanceOne = abs($neighbours[0] - $evaluationPoint);
+		$distanceTwo = abs($neighbours[1] - $evaluationPoint);
+		return $distanceOne <= $distanceTwo ? $neighbours[0] : $neighbours[1];
+	}
+
+	/**
 	 * Given an evaluation point and a dataset (order with keys in numerical order), interpolate the value in the evaluation-
 	 * point using inverse distance weighting.
 	 *
@@ -143,7 +179,7 @@ abstract class ApiBaseClass {
 	}
 
 	/**
-	 * Given an ordered dataset (the keys of the dataset are in numerical ascending order), finde the two points to either
+	 * Given an ordered dataset (the keys of the dataset are in numerical ascending order), find the two points to either
 	 * side of the given evaluation point.
 	 *
 	 * @param $evaluationPoint
