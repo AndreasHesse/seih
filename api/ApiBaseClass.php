@@ -30,17 +30,39 @@ abstract class ApiBaseClass {
 		$this->configuration = require_once('../../conf/settings.php');
 		$this->initDatabaseConnection();
 		header('Content-type: application/json');
+	}
+
+	/**
+	 * Init session data based on the session ID. Code is copied from lib.php in Seih main project.
+	 */
+	public function getHomeIdFromDbAndSession() {
 		session_start();
+		$typo3Db = new PDO(sprintf("mysql:host=%s;dbname=%s", $this->configuration['typo3_db']['hostname'], $this->configuration['typo3_db']['database']), $this->configuration['typo3_db']['username'], $this->configuration['typo3_db']['password']);
+		$cols = array('homeid');
+
+		$id = intval($_SESSION['seih_loggedin']);
+		$frontendUserSql = sprintf('SELECT %s FROM fe_users WHERE tilmeldingsid=%d', implode(',', $cols), $id);
+
+		$res = $typo3Db->query($frontendUserSql);
+		$user = $res->fetch(PDO::FETCH_ASSOC);
+		if ($user) {
+			return $user['homeid'];
+		}
+		return 0;
 	}
 
 	/**
 	 * Find the needed homeID. If IP is known, tage from GET variable, otherwise look into session.
+	 *
+	 * Returns 0 if no user was found.
+	 *
+	 * @return integer
 	 */
 	public function getHomeId() {
 		if (intval($_GET['homeId']) > 0 && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
 			return intval($_GET['homeId']);
 		} else {
-			return intval($_SESSION['userdata']['user']['homeid']);
+			return $this->getHomeIdFromDbAndSession();
 		}
 	}
 
