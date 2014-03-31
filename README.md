@@ -54,7 +54,7 @@ Return data from the DMI data collection
 
 Ex:
 
- https://seih.dk/mithjem/api/dmi/getData.php?startTimestamp=1380585600&endTimestamp=1380685600%20&stationId=06102&sensorNames=te,dp&numberOfPoints=800
+ https://seih.dk/mithjem/api/dmi/getData.php?startTimestamp=1380585600&endTimestamp=1380685600%20&stationId=06102&metricNames=te,dp&numberOfPoints=800
 
 
 

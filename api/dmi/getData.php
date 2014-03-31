@@ -86,7 +86,12 @@ class DMIDataAPI extends ApiBaseClass {
 		$res = $db->dmi->find($query);
 		$result = array();
 		foreach($res as $row) {
-			$result[$row['date']->sec] = $row[$metricName];
+			if ($metricName == 'te') {
+				$value = $row['tp'] == '-' ? -1 * floatval($row['te']) : floatval($row['te']);
+			} else {
+				$value = $row[$metricName];
+			}
+			$result[$row['date']->sec] = $value;
 		}
 		return $result;
 	}
