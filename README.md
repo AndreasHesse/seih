@@ -56,5 +56,38 @@ Ex:
 
  https://seih.dk/mithjem/api/dmi/getData.php?startTimestamp=1380585600&endTimestamp=1380685600%20&stationId=06102&metricNames=te,dp&numberOfPoints=800
 
+Get Fjernvarme data
+-------------------
+
+Return fjernvarme data
+
+ * startTimestamp (integer) Start of the period to return data from
+ * endTimestamp (integer) End of the period to return data from
+ * homeId (integer) The station to select data for
+ * metricNames (commalist) List of metrics to return. Valid metrcs: "kWh", "m3", "m3xC_frem", "m3xC_tilbage"
+ * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
+
+Ex:
+
+ http://seih.dk/seih/api/fjernvarme/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&metricNames=m3,kWh&numberOfPoints=10
+
+Get ngf data
+------------
+
+Return data from the Naturgas fyn collection
+
+ * startTimestamp (integer) Start of the period to return data from
+ * endTimestamp (integer) End of the period to return data from
+ * homeId (integer) The station to select data for
+ * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
+
+Ex:
+
+ http://seih.dk/seih/api/ngf/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&numberOfPoints=10
 
 
+ToDo:
+-----
+
+ * Caching of data (memcache)
+ * Determine if getAverages can be found from MongoData with no aggregation
