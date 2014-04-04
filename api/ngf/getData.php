@@ -13,8 +13,8 @@ class NGFDataAPI extends ApiBaseClass {
 	 */
 	public function render() {
 
-		$homeId = $this->getHomeId();
-		if ($homeId === 0) {
+		$ngfHome = $this->getNgfHome();
+		if ($ngfHome === 0) {
 			$this->renderError('HomeID must be set');
 		}
 
@@ -36,13 +36,13 @@ class NGFDataAPI extends ApiBaseClass {
 			'statusCode' => 200,
 			'startTime' => $startTime->format('d/m-Y H:i'),
 			'endTime' => $endTime->format('d/m-Y H:i'),
-			'homeId' => $homeId,
+			'homeId' => $ngfHome,
 			'numberOfPoints' => $numberOfPoints,
 		);
 		$result['data'] = array();
 
 
-		$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $homeId);
+		$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $ngfHome);
 		if ($numberOfPoints > 0) {
 			$result['data']['val'] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
 		} else {
@@ -61,12 +61,12 @@ class NGFDataAPI extends ApiBaseClass {
 	 * @param integer $stationId
 	 * @return array
 	 */
-	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $homeid) {
+	protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $home) {
 		$this->initMongoConnection();
 		$db = $this->mongoHandle->selectDB($this->configuration['mongo']['database']);
 
 		$query = array (
-			'home' => intval($homeid),
+			'home' => intval($home),
 			'date' => array(
 				'$gte' => new MongoDate($startTime->format('U')),
 				'$lt' => new MongoDate($endTime->format('U')),

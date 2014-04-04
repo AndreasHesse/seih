@@ -36,17 +36,30 @@ abstract class ApiBaseClass {
 	 * Init session data based on the session ID. Code is copied from lib.php in Seih main project.
 	 */
 	public function getHomeIdFromDbAndSession() {
+		return intval($this->getFeUsersValuesFromDbAndSession('homeid'));
+	}
+
+	/**
+	 * @return mixed
+	 */
+	public function getNgnHomeFromDbAndSession() {
+		return intval($this->getFeUsersValuesFromDbAndSession('ng_maalested'));
+	}
+
+	/**
+	 * @param $cols
+	 * @return mixed
+	 */
+	protected function getFeUsersValuesFromDbAndSession($cols) {
 		session_start();
 		$typo3Db = new PDO(sprintf("mysql:host=%s;dbname=%s", $this->configuration['typo3_db']['hostname'], $this->configuration['typo3_db']['database']), $this->configuration['typo3_db']['username'], $this->configuration['typo3_db']['password']);
-		$cols = array('homeid');
-
 		$id = intval($_SESSION['seih_loggedin']);
-		$frontendUserSql = sprintf('SELECT %s FROM fe_users WHERE tilmeldingsid=%d', implode(',', $cols), $id);
+		$frontendUserSql = sprintf('SELECT %s FROM fe_users WHERE tilmeldingsid=%d', $cols, $id);
 
 		$res = $typo3Db->query($frontendUserSql);
 		$user = $res->fetch(PDO::FETCH_ASSOC);
 		if ($user) {
-			return intval($user['homeid']);
+			return $user['ng_maalested'];
 		}
 		return 0;
 	}
@@ -65,6 +78,18 @@ abstract class ApiBaseClass {
 			return $this->getHomeIdFromDbAndSession();
 		}
 	}
+
+	/**
+	 *
+	 */
+	public function getNgfHome() {
+		if (intval($_GET['ngf_home']) > 0 && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
+			return intval($_GET['ngf_home']);
+		} else {
+			return $this->getNgnHomeFromDbAndSession();
+		}
+	}
+
 
 
 	/**
