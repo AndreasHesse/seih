@@ -36,7 +36,7 @@ class NGFDataAPI extends ApiBaseClass {
 			'statusCode' => 200,
 			'startTime' => $startTime->format('d/m-Y H:i'),
 			'endTime' => $endTime->format('d/m-Y H:i'),
-			'homeId' => $ngfHome,
+			'bgf_home' => $ngfHome,
 			'numberOfPoints' => $numberOfPoints,
 		);
 		$result['data'] = array();

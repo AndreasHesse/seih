@@ -14,7 +14,7 @@ Returns data from the large passiv data set. It requires the following parameter
 
  * startTimestamp (integer) Start of the period to return data from
  * endTimestamp (integer) End of the period to return data from
- * homeId (integer) The homeId to select data for
+ * homeId (integer) The homeId to select data for [Value is retrieved from session, but can be overriden if you IP is in the accesslist]
  * sensorNames (commalist) List of sensornames to return data for.
  * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
 
@@ -33,7 +33,7 @@ Return average values for a sensor in a home over a given time-period in a certa
  * endHour (integer) Last hour to get data from
  * startTimestamp (integer) Start of the period to return data from
  * endTimestamp (integer) End of the period to return data from
- * homeId (integer) The homeId to select data for
+ * homeId (integer) The homeId to select data for [Value is retrieved from session, but can be overriden if you IP is in the accesslist]
  * sensorNames (commalist) List of sensornames to return data for.
  * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
 
@@ -63,13 +63,13 @@ Return fjernvarme data
 
  * startTimestamp (integer) Start of the period to return data from
  * endTimestamp (integer) End of the period to return data from
- * homeId (integer) The station to select data for
+ * homeId (integer) The station to select data for [Value is retrieved from session, but can be overriden if you IP is in the accesslist]
  * metricNames (commalist) List of metrics to return. Valid metrcs: "kWh", "m3", "m3xC_frem", "m3xC_tilbage"
  * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
 
 Ex:
 
- http://seih.dk/seih/api/fjernvarme/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&metricNames=m3,kWh&numberOfPoints=10
+ http://seih.dk/mithjem/api/fjernvarme/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&metricNames=m3,kWh&numberOfPoints=10
 
 Get ngf data
 ------------
@@ -78,12 +78,12 @@ Return data from the Naturgas fyn collection
 
  * startTimestamp (integer) Start of the period to return data from
  * endTimestamp (integer) End of the period to return data from
- * homeId (integer) The station to select data for
+ * ngf_home (integer) The station to select data for [Value is retrieved from session, but can be overriden if you IP is in the accesslist]
  * numberOfPoints (integer) The number of points returned. If set, the data will be mapped to an equidistant array of this length. The dataset will be linearly interpolated to evaluate it in the grid points. If not set, the original full dataset is returned
 
 Ex:
 
- http://seih.dk/seih/api/ngf/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&numberOfPoints=10
+ https://seih.dk/mithjem/api/ngf/getData.php?startTimestamp=1388578840&endTimestamp=1391170840%20&numberOfPoints=10
 
 
 ToDo:

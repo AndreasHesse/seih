@@ -47,21 +47,21 @@ abstract class ApiBaseClass {
 	}
 
 	/**
-	 * @param $cols
+	 * @param $field The fieldname in the fe_users db to return;
 	 * @return mixed
 	 */
-	protected function getFeUsersValuesFromDbAndSession($cols) {
+	protected function getFeUsersValuesFromDbAndSession($field) {
 		session_start();
 		$typo3Db = new PDO(sprintf("mysql:host=%s;dbname=%s", $this->configuration['typo3_db']['hostname'], $this->configuration['typo3_db']['database']), $this->configuration['typo3_db']['username'], $this->configuration['typo3_db']['password']);
 		$id = intval($_SESSION['seih_loggedin']);
-		$frontendUserSql = sprintf('SELECT %s FROM fe_users WHERE tilmeldingsid=%d', $cols, $id);
+		$frontendUserSql = sprintf('SELECT %s FROM fe_users WHERE tilmeldingsid=%d', $field, $id);
 
 		$res = $typo3Db->query($frontendUserSql);
 		$user = $res->fetch(PDO::FETCH_ASSOC);
 		if ($user) {
-			return $user['ng_maalested'];
+			return $user[$field];
 		}
-		return 0;
+		return;
 	}
 
 	/**
