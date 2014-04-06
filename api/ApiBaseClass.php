@@ -24,11 +24,23 @@ abstract class ApiBaseClass {
 	protected $knownIpAddresses = array('127.0.0.1', '109.202.148.90');
 
 	/**
+	 * @var
+	 */
+	protected $memcache;
+
+	/**
+	 * @var integer
+	 */
+	protected $cacheTTL = 86400;
+
+	/**
 	 *
 	 */
 	public function __construct() {
 		$this->configuration = require_once('../../conf/settings.php');
 		$this->initDatabaseConnection();
+		$this->memcache = new Memcached();
+		$this->memcache->addServer('localhost', 11211);
 		header('Content-type: application/json');
 	}
 
@@ -279,6 +291,36 @@ abstract class ApiBaseClass {
 	 * @return mixed
 	 */
 	abstract function render();
+
+	/**
+	 * Calculate a hash for storing data from memcache
+	 *
+	 *
+	 * @param array $variables
+	 * @return string
+	 */
+	protected function calculateCacheHash(array $variables) {
+		$inputString = '';
+		foreach($variables as $key => $value) {
+			$inputString .= $key . '=>' . $value . ':';
+		}
+		return md5($inputString);
+	}
+
+	/**
+	 * @param $hash
+	 */
+	protected function findFromCache($hash) {
+		return $this->memcache->get($hash);
+	}
+
+	/**
+	 * @param $hash
+	 * @param $value
+	 */
+	protected function writeToCache($hash, $value) {
+		$this->memcache->add($hash, $value, $this->cacheTTL);
+	}
 
 }
 

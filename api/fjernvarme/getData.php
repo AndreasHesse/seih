@@ -32,6 +32,7 @@ class FjernvarmeDataAPI extends ApiBaseClass {
 			$this->renderError('Start or stop timestamp not correctly set');
 		}
 
+		$noCache = (isset($_GET['noCache']) && intval($_GET['noCache'])=== 1) ? TRUE : FALSE;
 		$numberOfPoints = intval($_GET['numberOfPoints']);
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
@@ -50,13 +51,29 @@ class FjernvarmeDataAPI extends ApiBaseClass {
 		$result['data'] = array();
 
 		foreach ($metricNames as $metricName) {
-			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $homeId, $metricName);
 
+			$hash = $this->calculateCacheHash(array(
+				'dataset' => 'fjernvarme',
+				'startTime' => $startTime->format('U'),
+				'endTime' => $endTime->format('U'),
+				'metricName' => $metricName,
+				'homeId' => $homeId,
+				'numberOfPoints' => $numberOfPoints
+			));
 
-			if ($numberOfPoints > 0) {
-				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+			if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
+				$result['dataSource'][$metricName] = 'cache';
+				$result['data'][$metricName] = $cachedResult;
 			} else {
-				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+				$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $homeId, $metricName);
+				if ($numberOfPoints > 0) {
+					$transformedData = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+				} else {
+					$transformedData = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+				}
+				$result['data'][$metricName] = $transformedData;
+				$result['dataSource'][$metricName] = 'rawDataSet';
+				$this->writeToCache($hash, $transformedData);
 			}
 		}
 		$rendertimeEnd = microtime(TRUE);

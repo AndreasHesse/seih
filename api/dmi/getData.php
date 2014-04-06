@@ -33,6 +33,7 @@ class DMIDataAPI extends ApiBaseClass {
 			$this->renderError('Start or stop timestamp not correctly set');
 		}
 
+		$noCache = (isset($_GET['noCache']) && intval($_GET['noCache'])=== 1) ? TRUE : FALSE;
 		$numberOfPoints = intval($_GET['numberOfPoints']);
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
@@ -50,11 +51,28 @@ class DMIDataAPI extends ApiBaseClass {
 		);
 
 		foreach ($metricNames as $metricName) {
-			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $stationId, $metricName);
-			if ($numberOfPoints > 0) {
-				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+
+			$hash = $this->calculateCacheHash(array(
+				'dataset' => 'dmi',
+				'startTime' => $startTime->format('U'),
+				'endTime' => $endTime->format('U'),
+				'metricName' => $metricName,
+				'stationId' => $stationId,
+				'numberOfPoints' => $numberOfPoints
+			));
+			if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
+				$result['dataSource'][$metricName] = 'cache';
+				$result['data'][$metricName] = $cachedResult;
 			} else {
-				$result['data'][$metricName] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+				$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $stationId, $metricName);
+				if ($numberOfPoints > 0) {
+					$transformedData = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+				} else {
+					$transformedData = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+				}
+				$result['data'][$metricName] = $transformedData;
+				$result['dataSource'][$metricName] = 'rawDataSet';
+				$this->writeToCache($hash, $transformedData);
 			}
 		}
 

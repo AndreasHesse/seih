@@ -32,6 +32,8 @@ class SensorDataAPI extends ApiBaseClass {
 			$this->renderError('Number of points must be specified');
 		}
 
+		$noCache = (isset($_GET['noCache']) && intval($_GET['noCache'])=== 1) ? TRUE : FALSE;
+
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
 		$endTime = DateTime::createFromFormat('U', $endTimestamp);
 
@@ -49,13 +51,32 @@ class SensorDataAPI extends ApiBaseClass {
 		);
 		$result['data'] = array();
 		foreach ($sensorNames as $sensorName) {
-			list($dataSouce, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $sensorName, $homeId, $interval);
-			$result['dataSource'] = $dataSouce;
-			if ($numberOfPoints > 0) {
-				$result['data'][$sensorName] = $this->transformData($this->mapDataToBins($bins, $sensorData));
+			$hash = $this->calculateCacheHash(array(
+				'dataset' => 'passiv',
+				'startTime' => $startTime->format('U'),
+				'endTime' => $endTime->format('U'),
+				'sensorName' => $sensorName,
+				'homeId' => $homeId,
+				'numberOfPoints' => $numberOfPoints
+			));
+
+			if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
+				$result['dataSource'][$sensorName] = 'cache';
+				$result['data'][$sensorName] = $cachedResult;
 			} else {
-				$result['data'][$sensorName] = $this->transformData($sensorData);
+				list($dataSource, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $sensorName, $homeId, $interval);
+				$result['dataSource'][$sensorName] = $dataSource;
+
+				if ($numberOfPoints > 0) {
+					$transformedData = $this->transformData($this->mapDataToBins($bins, $sensorData));
+				} else {
+					$transformedData = $this->transformData($sensorData);
+				}
+				$result['data'][$sensorName] = $transformedData;
+				$this->writeToCache($hash, $transformedData);
 			}
+
+
 		}
 		$rendertimeEnd = microtime(TRUE);
 		$result['querytimeInSeconds'] = $rendertimeEnd - $rendertimeStart;
@@ -86,17 +107,23 @@ class SensorDataAPI extends ApiBaseClass {
 	 * @return array
 	 */
 	protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId, $interval) {
-		//@todo: Determine how to fetch the data, from MySQL or Mongo depending on the interval needed
+
+
 		if ($interval > 86400) {
-			//Daily averagees are just fine for this as the interval is bigger than a day
-			return array('dailyAverages', $this->getDataFromMySQLDailyAverage($startTime, $endTime, $sensorName, $homeId));
+			//Daily averages are just fine for this as the interval is bigger than a day
+			$data = $this->getDataFromMySQLDailyAverage($startTime, $endTime, $sensorName, $homeId);
+			//$this->writeToCache($hash, $data);
+			return array('dailyAverages', $data);
 		}
 
 		if ($interval > 3600) {
-			return array('hourlyAverages', $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId));
+			$data = $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
+			//$this->writeToCache($hash, $data);
+			return array('hourlyAverages', $data);
 		}
-
-		return array('rawDataSet', $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId));
+		$data = $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
+		//$this->writeToCache($hash, $data);
+		return array('rawDataSet', $data);
 
 	}
 

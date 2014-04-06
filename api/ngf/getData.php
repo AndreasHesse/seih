@@ -25,6 +25,7 @@ class NGFDataAPI extends ApiBaseClass {
 			$this->renderError('Start or stop timestamp not correctly set');
 		}
 
+		$noCache = (isset($_GET['noCache']) && intval($_GET['noCache'])=== 1) ? TRUE : FALSE;
 		$numberOfPoints = intval($_GET['numberOfPoints']);
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
@@ -36,17 +37,32 @@ class NGFDataAPI extends ApiBaseClass {
 			'statusCode' => 200,
 			'startTime' => $startTime->format('d/m-Y H:i'),
 			'endTime' => $endTime->format('d/m-Y H:i'),
-			'bgf_home' => $ngfHome,
+			'ngfHome' => $ngfHome,
 			'numberOfPoints' => $numberOfPoints,
 		);
 		$result['data'] = array();
 
+		$hash = $this->calculateCacheHash(array(
+			'dataset' => 'ngf',
+			'startTime' => $startTime->format('U'),
+			'endTime' => $endTime->format('U'),
+			'ngfHome' => $ngfHome,
+			'numberOfPoints' => $numberOfPoints
+		));
 
-		$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $ngfHome);
-		if ($numberOfPoints > 0) {
-			$result['data']['val'] = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+		if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
+			$result['dataSource']['val'] = 'cache';
+			$result['data']['val'] = $cachedResult;
 		} else {
-			$result['data']['val'] = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+			$sensorData = $this->getDataFromFullMongoDataset($startTime, $endTime, $ngfHome);
+			if ($numberOfPoints > 0) {
+				$transformedData = $this->renormalizeTimestampKeysToMilliseconds($this->mapDataToBins($bins, $sensorData));
+			} else {
+				$transformedData = $this->renormalizeTimestampKeysToMilliseconds($sensorData);
+			}
+			$result['data']['val'] = $transformedData;
+			$result['dataSource']['val'] = 'rawDataSet';
+			$this->writeToCache($hash, $transformedData);
 		}
 
 		$rendertimeEnd = microtime(TRUE);
