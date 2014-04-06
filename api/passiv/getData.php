@@ -28,12 +28,16 @@ class SensorDataAPI extends ApiBaseClass {
 		}
 
 		$numberOfPoints = intval($_GET['numberOfPoints']);
+		if ($numberOfPoints === 0) {
+			$this->renderError('Number of points must be specified');
+		}
 
 		$startTime = DateTime::createFromFormat('U', $startTimestamp);
 		$endTime = DateTime::createFromFormat('U', $endTimestamp);
 
 		$rendertimeStart = microtime(TRUE);
 		$bins = $this->calculateBins($startTime, $endTime, $numberOfPoints);
+		$interval = abs($endTime->getTimestamp() - $startTime->getTimestamp()) / $numberOfPoints;
 		$result = array(
 			'statusCode' => 200,
 			'startTime' => $startTime->format('d/m-Y H:i'),
@@ -41,10 +45,12 @@ class SensorDataAPI extends ApiBaseClass {
 			'sensors' => $sensorNames,
 			'homeId' => $homeId,
 			'numberOfPoints' => $numberOfPoints,
+			'binSizeInSeconds' => $interval
 		);
 		$result['data'] = array();
 		foreach ($sensorNames as $sensorName) {
-			$sensorData = $this->getDataFromStorage($startTime, $endTime, $sensorName, $homeId);
+			list($dataSouce, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $sensorName, $homeId, $interval);
+			$result['dataSource'] = $dataSouce;
 			if ($numberOfPoints > 0) {
 				$result['data'][$sensorName] = $this->transformData($this->mapDataToBins($bins, $sensorData));
 			} else {
@@ -58,7 +64,7 @@ class SensorDataAPI extends ApiBaseClass {
 
 	/**
 	 * Since higcharts expects timestamp to be milliseconds, we multiply each key with thousand. We divide the value with
-	 * 100 since, we have data in centicelcius and would like to have it in degrees celcius
+	 * 100 since, we have data in centi-celcius and would like to have it in degrees celcius
 	 * @param $data
 	 * @return array
 	 */
@@ -76,12 +82,22 @@ class SensorDataAPI extends ApiBaseClass {
 	 * @param DateTime $endTime
 	 * @param string $sensorName
 	 * @param integer $homeId
+	 * @param integer $interval
 	 * @return array
 	 */
-	protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId) {
+	protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId, $interval) {
 		//@todo: Determine how to fetch the data, from MySQL or Mongo depending on the interval needed
-		return $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
-		return $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
+		if ($interval > 86400) {
+			//Daily averagees are just fine for this as the interval is bigger than a day
+			return array('dailyAverages', $this->getDataFromMySQLDailyAverage($startTime, $endTime, $sensorName, $homeId));
+		}
+
+		if ($interval > 3600) {
+			return array('hourlyAverages', $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId));
+		}
+
+		return array('rawDataSet', $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId));
+
 	}
 
 	/**
@@ -101,6 +117,25 @@ class SensorDataAPI extends ApiBaseClass {
 		}
 		return $data;
 	}
+
+	/**
+	 * Return data from daily aggregated data.
+	 *
+	 * @param DateTime $startTime
+	 * @param DateTime $endTime
+	 * @param string $sensorName
+	 * @param integer $homeId
+	 * @return array
+	 */
+	protected function getDataFromMySQLDailyAverage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId) {
+		$query = sprintf('SELECT UNIX_TIMESTAMP(date) as timestamp, averageValue from daily WHERE homeid = %s and sensorName = "%s" AND date > "%s" AND date < "%s" ORDER BY date ASC', $homeId, $sensorName, $startTime->format('Y-m-d H:i:s'), $endTime->format('Y-m-d H:i:s'));
+		$data = array();
+		foreach ($this->dbHandle->query($query) as $row) {
+			$data[$row['timestamp']] = $row['averageValue'];
+		}
+		return $data;
+	}
+
 
 	/**
 	 * Return data from full MongoDB set.
