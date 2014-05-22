@@ -9,7 +9,7 @@
  * @author: Jan-Erik Revsbech <janerik@moc.net>
  */
 
-$configuration = require_once('../conf/settings.php');
+$configuration = require_once(__DIR__ . '/../conf/settings.php');
 
 try {
 

@@ -1,4 +1,4 @@
-<?php
+1<?php
 /**
  * Aggretate data from the huge "passiv" collection into more manageable hourly averages.
  * Using the MongoDB Aggregation pipeline, we calculate hourly averages for all combinations
@@ -24,11 +24,11 @@ try {
 		$mongoFra = DateTime::createFromFormat('!Y-m-d H:i:s', $row['maxDate'], new DateTimeZone('UTC'));
 	}
 
-	//$mongoFra = DateTime::createFromFormat('!d/m/Y H:i', '01/01/2014 00:00', new DateTimeZone('UTC'));
-	//$mongoTil = DateTime::createFromFormat('!d/m/Y H:i', '04/01/2014 00:00', new DateTimeZone('UTC'));
+//	$mongoFra = DateTime::createFromFormat('!d/m/Y H:i', '30/03/2014 00:00', new DateTimeZone('UTC'));
+//	$mongoTil = DateTime::createFromFormat('!d/m/Y H:i', '31/01/2014 00:00', new DateTimeZone('UTC'));
 
 	$mongoTil = clone($mongoFra);
-	$mongoTil->add(new DateInterval('P1D'));
+	$mongoTil->add(new DateInterval('P7D'));
 
 
 
