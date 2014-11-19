@@ -19,30 +19,23 @@ try {
         $db = $m->selectDB($configuration['mongo']['database']);
         /*
                 // Dates in Mongo are stores with UTC, so we create it like that.
-                $sql = 'select max(date) as maxDate from hourly';
+                $sql = 'select max(date) as maxDate from daily';
                 foreach ($dbh->query($sql) as $row) {
                         $mongoFra = DateTime::createFromFormat('!Y-m-d H:i:s', $row['maxDate'], new DateTimeZone('UTC'));
                 }
 
+        //	$mongoFra = DateTime::createFromFormat('!d/m/Y H:i', '30/03/2014 00:00', new DateTimeZone('UTC'));
+        //	$mongoTil = DateTime::createFromFormat('!d/m/Y H:i', '31/01/2014 00:00', new DateTimeZone('UTC'));
 
-        $mongoFra = DateTime::createFromFormat('d/m/Y H:i', '01/13/2013 00:00', new DateTimeZone('UTC'));
-        echo $mongoFra->format("d/m-Y H:i") . PHP_EOL;
-
-
-        $mongoTil = clone($mongoFra);
-        $mongoTil->add(new DateInterval('P1D'));
-
-        //$mongoTil = DateTime::createFromFormat('!d/m/Y H:i', '02/10/2013 00:00', new DateTimeZone('UTC'));
-
-
+                $mongoTil = clone($mongoFra);
+                $mongoTil->add(new DateInterval('P7D'));
         */
 
-        $mongoFra = strtotime("2014-06-01 00:00:00");
-        $mongoTil = strtotime("2014-11-01 00:00:00");
 
+        $mongoFra = strtotime("2013-01-01 00:00:00");
+        $mongoTil = strtotime("2013-04-01 00:00:00");
 
         print "Aggregating data from " . date("Y-m-d H:i:s", $mongoFra) . ' to ' . date("Y-m-d H:i:s", $mongoTil) . PHP_EOL;
-
         $averageAggregation = array(
                 array(
                         '$match' => array(
@@ -61,7 +54,6 @@ try {
                                 'year' => array('$year' => '$date'),
                                 'month' => array('$month' => '$date'),
                                 'day' => array('$dayOfMonth' => '$date'),
-                                'hour' => array('$hour' => '$date'),
                                 'val' => 1
                         )
                 ),
@@ -70,7 +62,6 @@ try {
                                 '_id' => array(
                                         'sensor' => '$sensor',
                                         'homeId' => '$homeId',
-                                        'hour' => '$hour',
                                         'day' => '$day',
                                         'month' => '$month',
                                         'year' => '$year'
@@ -87,7 +78,6 @@ try {
                                 'points' => 1,
                                 'date_sample' => 1,
                                 'homeId' => '$_id.homeId',
-                                'hour' => '$_id.hour',
                                 'day' => '$_id.day',
                                 'month' => '$_id.month',
                                 'year' => '$_id.year',
@@ -101,16 +91,18 @@ try {
         );
 
         if ($results['ok'] == 1.00) {
+
                 foreach ($results['result'] as $res) {
                         $data = array(
                                 'homeID' => $res['homeId'],
                                 'sensorName' => '"' . $res['sensor'] . '"',
-                                'hour' => $res['hour'],
                                 'numberOfSamples' => $res['points'],
                                 'averageValue' => $res['average'],
-                                'date' => sprintf('"%4d-%02d-%02d %02d:00"', $res['year'], $res['month'], $res['day'], $res['hour'])
+                                'date' => sprintf('"%4d-%02d-%02d 00:00"', $res['year'], $res['month'], $res['day'])
                         );
-                        $query = 'REPLACE INTO hourly (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', $data) . ')';
+                        $query = 'REPLACE INTO daily (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', $data) . ')';
+                        echo $query;
+                        die;
                         $dbh->exec($query);
                 }
         }

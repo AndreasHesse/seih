@@ -60,22 +60,23 @@ class BrugsvandDataAPI extends ApiBaseClass
 
                 if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
                         $result['dataSource'][$aftageNr] = 'cache';
-                        $result['data'][$aftageNr] = $cachedResult;
+                        $result['data'] = $cachedResult;
                 } else {
-                        list($dataSource, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $aftageNr,  $interval);
-                        $result['dataSource'][$sensorName] = $dataSource;
+                        list($dataSource, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $aftageNr, $interval);
+                        $result['dataSource'][$aftageNr] = $dataSource;
 
                         if ($numberOfPoints > 0) {
                                 $transformedData = $this->transformData($this->mapDataToBins($bins, $sensorData));
                         } else {
                                 $transformedData = $this->transformData($sensorData);
                         }
-                        $result['data'][$aftageNr] = $transformedData;
+                        $result['data'] = $transformedData;
                         $this->writeToCache($hash, $transformedData);
                 }
 
                 $rendertimeEnd = microtime(TRUE);
                 $result['querytimeInSeconds'] = $rendertimeEnd - $rendertimeStart;
+                $result['hash'] = $hash;
                 print json_encode($result);
         }
 
@@ -100,29 +101,29 @@ class BrugsvandDataAPI extends ApiBaseClass
          *
          * @param DateTime $startTime
          * @param DateTime $endTime
-         * @param string   $sensorName
-         * @param integer  $homeId
+         * @param string   $aftageNr
          * @param integer  $interval
          *
          * @return array
          */
-        protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId, $interval)
+        protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $aftageNr, $interval)
         {
 
-
+                /*
                 if ($interval > 86400) {
                         //Daily averages are just fine for this as the interval is bigger than a day
-                        $data = $this->getDataFromMySQLDailyAverage($startTime, $endTime, $sensorName, $homeId);
+                        $data = $this->getDataFromMySQLDailyAverage($startTime, $endTime, $aftageNr);
                         //$this->writeToCache($hash, $data);
                         return array('dailyAverages', $data);
                 }
 
                 if ($interval > 3600) {
-                        $data = $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
+                        $data = $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $aftageNr);
                         //$this->writeToCache($hash, $data);
                         return array('hourlyAverages', $data);
                 }
-                $data = $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
+                */
+                $data = $this->getDataFromFullMongoDataset($startTime, $endTime, $aftageNr);
                 //$this->writeToCache($hash, $data);
                 return array('rawDataSet', $data);
 
@@ -174,25 +175,23 @@ class BrugsvandDataAPI extends ApiBaseClass
          *
          * @param DateTime $startTime
          * @param DateTime $endTime
-         * @param string   $sensorName
-         * @param integer  $homeId
+         * @param string   $aftageNr
          *
          * @return array
          */
-        protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $sensorName, $homeId)
+        protected function getDataFromFullMongoDataset(DateTime $startTime, DateTime $endTime, $aftageNr)
         {
                 $this->initMongoConnection();
                 $db = $this->mongoHandle->selectDB($this->configuration['mongo']['database']);
 
                 $query = array(
-                        'homeId' => $homeId,
-                        'sensor' => $sensorName,
+                        'aftagenr' => $aftageNr,
                         'date' => array(
                                 '$gte' => new MongoDate($startTime->format('U')),//new MongoDate(strtotime("2013-07-28 00:00:00")), //
                                 '$lt' => new MongoDate($endTime->format('U')),//new MongoDate(strtotime("2013-07-30 00:00:00")),//
                         )
                 );
-                $res = $db->passiv->find($query);
+                $res = $db->energifyn->find($query);
                 $result = array();
                 foreach ($res as $row) {
                         $result[$row['date']->sec] = $row['val'];
