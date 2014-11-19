@@ -32,8 +32,8 @@ try {
         */
 
 
-        $mongoFra = strtotime("2013-01-01 00:00:00");
-        $mongoTil = strtotime("2013-04-01 00:00:00");
+        $mongoFra = strtotime("2013-12-01 00:00:00");
+        $mongoTil = strtotime("2014-12-01 00:00:00");
 
         print "Aggregating data from " . date("Y-m-d H:i:s", $mongoFra) . ' to ' . date("Y-m-d H:i:s", $mongoTil) . PHP_EOL;
         $averageAggregation = array(
@@ -101,8 +101,10 @@ try {
                                 'date' => sprintf('"%4d-%02d-%02d 00:00"', $res['year'], $res['month'], $res['day'])
                         );
                         $query = 'REPLACE INTO daily (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', $data) . ')';
-                        echo $query;
-                        die;
+                        echo '.';
+                        /*
+                         die;
+                        */
                         $dbh->exec($query);
                 }
         }

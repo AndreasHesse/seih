@@ -18,7 +18,7 @@ try {
 	$m = new MongoClient($configuration['mongo']['hostname']);
 	$db = $m->selectDB($configuration['mongo']['database']);
 
-	// Dates in Mongo are stores with UTC, so we create it like that.
+	// Dates in Mongo are stored with UTC, so we create it like that.
 	$sql = 'select max(date) as maxDate from daily';
 	foreach ($dbh->query($sql) as $row) {
 		$mongoFra = DateTime::createFromFormat('!Y-m-d H:i:s', $row['maxDate'], new DateTimeZone('UTC'));
@@ -29,8 +29,6 @@ try {
 
 	$mongoTil = clone($mongoFra);
 	$mongoTil->add(new DateInterval('P7D'));
-
-
 
 	print "Aggregating data from " . $mongoFra->format("d/m-Y H:i") . ' to ' . $mongoTil->format("d/m-Y H:i") . PHP_EOL;
 	$averageAggregation = array(

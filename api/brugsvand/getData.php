@@ -21,7 +21,7 @@ class BrugsvandDataAPI extends ApiBaseClass
                                 }*/
 
                 //$sensorNames = explode(',', $sensorNames);
-                $sensorNames = ['wm1a_ny'];
+                $sensorNames = ['wm1a_ny', 'ts2'];
 
                 $startTimestamp = intval($_GET['startTimestamp']);
                 $endTimestamp = intval($_GET['endTimestamp']);
@@ -54,20 +54,22 @@ class BrugsvandDataAPI extends ApiBaseClass
                 );
                 $result['data'] = array();
                 foreach ($sensorNames as $sensorName) {
+
                         $hash = $this->calculateCacheHash(array(
-                                'dataset' => 'wm1a',
+                                // 'dataset' => 'wm1a',
                                 'startTime' => $startTime->format('U'),
                                 'endTime' => $endTime->format('U'),
-                                //'sensorName' => $sensorName,
+                                'sensorName' => $sensorName,
                                 'homeId' => $homeId,
                                 'numberOfPoints' => $numberOfPoints
                         ));
+                        $result['hash'][$sensorName] = $hash;
 
                         if ($noCache == FALSE && $cachedResult = $this->findFromCache($hash)) {
                                 $result['dataSource'][$sensorName] = 'cache';
                                 $result['data'][$sensorName] = $cachedResult;
                         } else {
-                                list($dataSource, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $homeId, $interval);
+                                list($dataSource, $sensorData) = $this->getDataFromStorage($startTime, $endTime, $homeId, $sensorName, $interval);
                                 $result['dataSource'][$sensorName] = $dataSource;
 
                                 if ($numberOfPoints > 0) {
@@ -113,23 +115,23 @@ class BrugsvandDataAPI extends ApiBaseClass
          *
          * @return array
          */
-        protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $homeId, $interval)
+        protected function getDataFromStorage(DateTime $startTime, DateTime $endTime, $homeId, $sensorName, $interval)
         {
 
 
                 if ($interval > 86400) {
                         //Daily averages are just fine for this as the interval is bigger than a day
-                        $data = $this->getDataFromMySQLDailyAverage($startTime, $endTime, $homeId);
+                        $data = $this->getDataFromMySQLDailyAverage($startTime, $endTime, $sensorName, $homeId);
                         //$this->writeToCache($hash, $data);
                         return array('dailyAverages', $data);
                 }
 
                 if ($interval > 3600) {
-                        $data = $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $homeId);
+                        $data = $this->getDataFromMySQLHourlyAverage($startTime, $endTime, $sensorName, $homeId);
                         //$this->writeToCache($hash, $data);
                         return array('hourlyAverages', $data);
                 }
-                $data = $this->getDataFromFullMongoDataset($startTime, $endTime, $homeId);
+                $data = $this->getDataFromFullMongoDataset($startTime, $endTime, $sensorName, $homeId);
                 //$this->writeToCache($hash, $data);
                 return array('rawDataSet', $data);
 
@@ -145,9 +147,9 @@ class BrugsvandDataAPI extends ApiBaseClass
          *
          * @return array
          */
-        protected function getDataFromMySQLHourlyAverage(DateTime $startTime, DateTime $endTime, $homeId)
+        protected function getDataFromMySQLHourlyAverage(DateTime $startTime, DateTime $endTime, $sensorName, $homeId)
         {
-                $query = sprintf('SELECT UNIX_TIMESTAMP(date) as timestamp, averageValue from hourly WHERE homeid = %s and sensorName = "wm1a" AND date > "%s" AND date < "%s" ORDER BY date ASC', $homeId, $sensorName, $startTime->format('Y-m-d H:i:s'), $endTime->format('Y-m-d H:i:s'));
+                $query = sprintf('SELECT UNIX_TIMESTAMP(date) as timestamp, averageValue from hourly WHERE homeid = %s and sensorName = "%s" AND date > "%s" AND date < "%s" ORDER BY date ASC', $homeId, $sensorName, $startTime->format('Y-m-d H:i:s'), $endTime->format('Y-m-d H:i:s'));
                 $data = array();
                 foreach ($this->dbHandle->query($query) as $row) {
                         $data[$row['timestamp']] = $row['averageValue'];
