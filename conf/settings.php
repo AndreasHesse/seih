@@ -5,6 +5,10 @@ $conf = array (
 		'hostname' => 'zeeman',
 		'database' => 'seih',
 	),
+	'mongovand' => array (
+		'hostname' => 'zeeman',
+		'database' => 'seih_vand2',
+	),
 	'typo3_db' => array (
 		'hostname' => 'localhost',
 		'database' => 'seih',

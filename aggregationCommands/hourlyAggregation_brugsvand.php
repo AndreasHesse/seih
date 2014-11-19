@@ -17,27 +17,40 @@ try {
         $dbh = new PDO(sprintf("mysql:host=%s;dbname=%s", $configuration['mysql']['hostname'], $configuration['mysql']['database']), $configuration['mysql']['username'], $configuration['mysql']['password']);
         $m = new MongoClient($configuration['mongo']['hostname']);
         $db = $m->selectDB($configuration['mongo']['database']);
+        /*
+                // Dates in Mongo are stores with UTC, so we create it like that.
+                $sql = 'select max(date) as maxDate from hourly';
+                foreach ($dbh->query($sql) as $row) {
+                        $mongoFra = DateTime::createFromFormat('!Y-m-d H:i:s', $row['maxDate'], new DateTimeZone('UTC'));
+                }
 
-        // Dates in Mongo are stores with UTC, so we create it like that.
-        $sql = 'select max(date) as maxDate from hourly';
-        foreach ($dbh->query($sql) as $row) {
-                $mongoFra = DateTime::createFromFormat('!Y-m-d H:i:s', $row['maxDate'], new DateTimeZone('UTC'));
-        }
+
+        $mongoFra = DateTime::createFromFormat('d/m/Y H:i', '01/13/2013 00:00', new DateTimeZone('UTC'));
+        echo $mongoFra->format("d/m-Y H:i") . PHP_EOL;
+
+
         $mongoTil = clone($mongoFra);
         $mongoTil->add(new DateInterval('P1D'));
 
-        //$mongoFra = DateTime::createFromFormat('!d/m/Y H:i', '01/10/2013 00:00', new DateTimeZone('UTC'));
         //$mongoTil = DateTime::createFromFormat('!d/m/Y H:i', '02/10/2013 00:00', new DateTimeZone('UTC'));
 
-        print "Aggregating data from " . $mongoFra->format("d/m-Y H:i") . ' to ' . $mongoTil->format("d/m-Y H:i") . PHP_EOL;
+
+        */
+
+
+        $mongoFra = strtotime("2013-12-01 00:00:00");
+        $mongoTil = strtotime("2014-06-01 00:00:00");
+
+
+        print "Aggregating data from " . date("Y-m-d H:i:s", $mongoFra) . ' to ' . date("Y-m-d H:i:s", $mongoTil) . PHP_EOL;
+
         $averageAggregation = array(
                 array(
                         '$match' => array(
-                                //			'homeId' => 35600,
-                                //			'sensor' => 'z1t',
+                                'sensor' => 'wm1a_ny',
                                 'date' => array(
-                                        '$gte' => new MongoDate($mongoFra->format('U')),
-                                        '$lt' => new MongoDate($mongoTil->format('U'))
+                                        '$gte' => new MongoDate($mongoFra),
+                                        '$lt' => new MongoDate($mongoTil)
                                 )
                         )
                 ),
