@@ -4,8 +4,9 @@ session_start();
 include "../../../fileadmin/lib/lib.php";
 $indbSql = 'select dato, value,comment,refilldate,refillamount
 			from `indberetninger`
-			where `tilmeldingsid` = ' . $_SESSION['seih_bruger'] . '
+			where `tilmeldingsid` = ' . $_SESSION['seih_loggedin'] . '
 			order by dato';
+#echo $indbSql;
 $returndata = $DBH->query($indbSql);
 $data = $returndata->fetchAll(PDO::FETCH_ASSOC);
 $return = [];

@@ -109,10 +109,14 @@ abstract class ApiBaseClass {
 	 */
 	public function initMongoConnection() {
 		if ($this->mongoHandle === NULL) {
-			$this->mongoHandle = new MongoClient($this->configuration['mongo']['hostname']);
-
+			$this->mongoHandle = new MongoClient($this->configuration['mongo']['hostname'], array(
+					"username" => $this->configuration['mongo']['username'],
+					"password" => $this->configuration['mongo']['password'],
+					"db" => $this->configuration['mongo']['database']
+			));
 		}
 	}
+
 
 	/**
 	 *
