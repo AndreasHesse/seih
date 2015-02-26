@@ -1,7 +1,22 @@
 <?php
+error_reporting(E_ALL);
 
+abstract class ApiBaseClass
+{
+	/**
+	 * @var array
+	 */
+	public $sensorArray = array();
 
-abstract class ApiBaseClass {
+	/**
+	 * @var array
+	 */
+	public $mongoConstraint = array();
+
+	/**
+	 * @var
+	 */
+	public $passivCollection;
 
 	/**
 	 * @var array|mixed
@@ -26,43 +41,73 @@ abstract class ApiBaseClass {
 	/**
 	 * @var
 	 */
-	protected $memcache;
+	protected $cache;
 
-	/**
-	 * @var integer
-	 */
-	protected $cacheTTL = 86400;
 
 	/**
 	 *
 	 */
-	public function __construct() {
+	public function __construct()
+	{
+		require_once('../../../docs/fileadmin/lib/CacheMaster.php');
 		$this->configuration = require_once('../../conf/settings.php');
-		$this->initDatabaseConnection();
-		$this->memcache = new Memcached();
-		$this->memcache->addServer('localhost', 11211);
+		$this->initMongoConnection();
+
+		$this->mongoConstraint = array(
+			'_id' => FALSE,
+			'samples' => FALSE,
+			'homeID' => FALSE,
+			'sensorID' => FALSE,
+			'ng_maalested' => FALSE,
+			'day' => FALSE,
+		);
+
+		$this->passivCollection = $this->mongoHandle
+			->selectDB($this->configuration['mongo']['database'])
+			->selectCollection('passiv');
+
+		$cursor = $this->mongoHandle
+			->selectDB($this->configuration['mongo']['database'])
+			->sensors
+			->find(array(), array('_id' => FALSE));
+
+		foreach ($cursor as $doc) {
+			$code = explode('-', $doc['name']);
+			$codeabbr = '';
+			foreach ($code as $w) {
+				$codeabbr .= $w[0];
+			}
+			$this->sensorArray[$codeabbr] = $doc['id'];
+		}
+
+		$this->cache = new CacheMaster();
+		$this->cache->setCacheDir($this->configuration['cache']['cacheDir']);
 		header('Content-type: application/json');
 	}
 
 	/**
 	 * Init session data based on the session ID. Code is copied from lib.php in Seih main project.
 	 */
-	public function getHomeIdFromDbAndSession() {
+	public function getHomeIdFromDbAndSession()
+	{
 		return intval($this->getFeUsersValuesFromDbAndSession('homeid'));
 	}
 
 	/**
 	 * @return mixed
 	 */
-	public function getNgnHomeFromDbAndSession() {
+	public function getNgnHomeFromDbAndSession()
+	{
 		return intval($this->getFeUsersValuesFromDbAndSession('ng_maalested'));
 	}
 
 	/**
 	 * @param $field The fieldname in the fe_users db to return;
+	 *
 	 * @return mixed
 	 */
-	protected function getFeUsersValuesFromDbAndSession($field) {
+	protected function getFeUsersValuesFromDbAndSession($field)
+	{
 		session_start();
 		$typo3Db = new PDO(sprintf("mysql:host=%s;dbname=%s", $this->configuration['typo3_db']['hostname'], $this->configuration['typo3_db']['database']), $this->configuration['typo3_db']['username'], $this->configuration['typo3_db']['password']);
 		$id = intval($_SESSION['seih_loggedin']);
@@ -83,8 +128,9 @@ abstract class ApiBaseClass {
 	 *
 	 * @return integer
 	 */
-	public function getHomeId() {
-		if (intval($_GET['homeId']) > 0 && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
+	public function getHomeId()
+	{
+		if (intval($_GET['homeId']) > 0/* && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)*/) {
 			return intval($_GET['homeId']);
 		} else {
 			return $this->getHomeIdFromDbAndSession();
@@ -94,34 +140,34 @@ abstract class ApiBaseClass {
 	/**
 	 *
 	 */
-	public function getNgfHome() {
-		if (intval($_GET['ngf_home']) > 0 && in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)) {
+	public function getNgfHome()
+	{
+		if (intval($_GET['ngf_home']) > 0 /*&& in_array($_SERVER['REMOTE_ADDR'], $this->knownIpAddresses)*/) {
 			return intval($_GET['ngf_home']);
 		} else {
 			return $this->getNgnHomeFromDbAndSession();
 		}
 	}
 
-
-
 	/**
 	 *
 	 */
-	public function initMongoConnection() {
+	public function initMongoConnection()
+	{
 		if ($this->mongoHandle === NULL) {
 			$this->mongoHandle = new MongoClient($this->configuration['mongo']['hostname'], array(
-					"username" => $this->configuration['mongo']['username'],
-					"password" => $this->configuration['mongo']['password'],
-					"db" => $this->configuration['mongo']['database']
+				"username" => $this->configuration['mongo']['username'],
+				"password" => $this->configuration['mongo']['password'],
+				"db" => $this->configuration['mongo']['database']
 			));
 		}
 	}
 
-
 	/**
 	 *
 	 */
-	public function initDatabaseConnection() {
+	public function initDatabaseConnection()
+	{
 		if ($this->dbHandle === NULL) {
 			$this->dbHandle = new PDO(sprintf("mysql:host=%s;dbname=%s", $this->configuration['mysql']['hostname'], $this->configuration['mysql']['database']), $this->configuration['mysql']['username'], $this->configuration['mysql']['password']);
 		}
@@ -130,7 +176,8 @@ abstract class ApiBaseClass {
 	/**
 	 * @param $message
 	 */
-	protected function renderError($message, $statusCode = 500) {
+	protected function renderError($message, $statusCode = 500)
+	{
 		header(sprintf('HTTP/1.0 %d %s', $statusCode, $message));
 		$data = array(
 			'statusCode' => $statusCode,
@@ -150,9 +197,12 @@ abstract class ApiBaseClass {
 	 *
 	 * @param DateTime $startTime
 	 * @param DateTime $endTime
-	 * @param integer $numberOfBins
+	 * @param          $numberOfBins
+	 *
+	 * @return array
 	 */
-	protected function calculateBins(DateTime $startTime, DateTime $endTime, $numberOfBins) {
+	protected function calculateBins(DateTime $startTime, DateTime $endTime, $numberOfBins)
+	{
 		$startSecond = intval($startTime->format('U'));
 		$endSecond = intval($endTime->format('U'));
 		$intervalInSeconds = abs($endSecond - $startSecond);
@@ -171,9 +221,11 @@ abstract class ApiBaseClass {
 	 *
 	 * @param array $bins
 	 * @param array $data
+	 *
 	 * @return array
 	 */
-	protected function mapDataToBins($bins, $sensorData) {
+	protected function mapDataToBins($bins, $sensorData)
+	{
 		$data = array();
 		foreach ($bins as $binValue) {
 			$data[$binValue] = $this->interpolate($binValue, $sensorData);
@@ -189,7 +241,8 @@ abstract class ApiBaseClass {
 	 * @param $evaluationPoint
 	 * @param $sensorData
 	 */
-	protected function evaluateAtPoint($evaluationPoint, $sensorData) {
+	protected function evaluateAtPoint($evaluationPoint, $sensorData)
+	{
 		if (count($sensorData) == 0) {
 			return 0;
 		}
@@ -203,7 +256,8 @@ abstract class ApiBaseClass {
 	 * @param $binValue
 	 * @param $sensorData
 	 */
-	protected function evaluateAtNearestNeighbour($evaluationPoint, $sensorData) {
+	protected function evaluateAtNearestNeighbour($evaluationPoint, $sensorData)
+	{
 		$neighbours = $this->findNeighbours($evaluationPoint, array_keys($data));
 		if (count($neighbours) !== 2) {
 			// Return 0 since, we have no points to actually interpolate
@@ -220,10 +274,12 @@ abstract class ApiBaseClass {
 	 *
 	 * @param float $evaluationPoint
 	 * @param array $data Data must be ordere with eys in numerical order ascending.
+	 *
 	 * @return float
 	 * @throws Exception
 	 */
-	protected function interpolate($evaluationPoint, $data) {
+	protected function interpolate($evaluationPoint, $data)
+	{
 		$neighbours = $this->findNeighbours($evaluationPoint, array_keys($data));
 		if (count($neighbours) !== 2) {
 			// Return 0 since, we have no points to actually interpolate
@@ -238,7 +294,7 @@ abstract class ApiBaseClass {
 		if ($totalDistance == 0) {
 			return $data[$neighbours[0]];
 		}
-		return $valueOne * (( 1 - ($distanceOne/$totalDistance))) + $valueTwo * ( 1 - ($distanceTwo/$totalDistance));
+		return $valueOne * ((1 - ($distanceOne / $totalDistance))) + $valueTwo * (1 - ($distanceTwo / $totalDistance));
 
 	}
 
@@ -249,7 +305,8 @@ abstract class ApiBaseClass {
 	 * @param $evaluationPoint
 	 * @param $data
 	 */
-	protected function findNeighbours($evaluationPoint, $orderedData) {
+	protected function findNeighbours($evaluationPoint, $orderedData)
+	{
 		if (count($orderedData) === 0) {
 			return array();
 		}
@@ -280,16 +337,17 @@ abstract class ApiBaseClass {
 	 * Since higcharts expects timestamp to be milliseconds, we multiply each key with thousand.
 	 *
 	 * @param $data
+	 *
 	 * @return array
 	 */
-	protected function renormalizeTimestampKeysToMilliseconds($data) {
+	protected function renormalizeTimestampKeysToMilliseconds($data)
+	{
 		$transformedData = array();
 		foreach ($data as $key => $value) {
 			$transformedData[$key * 1000] = $value;
 		}
 		return $transformedData;
 	}
-
 
 	/**
 	 * @return mixed
@@ -301,11 +359,13 @@ abstract class ApiBaseClass {
 	 *
 	 *
 	 * @param array $variables
+	 *
 	 * @return string
 	 */
-	protected function calculateCacheHash(array $variables) {
+	protected function calculateCacheHash(array $variables)
+	{
 		$inputString = '';
-		foreach($variables as $key => $value) {
+		foreach ($variables as $key => $value) {
 			$inputString .= $key . '=>' . $value . ':';
 		}
 		return md5($inputString);
@@ -314,16 +374,18 @@ abstract class ApiBaseClass {
 	/**
 	 * @param $hash
 	 */
-	protected function findFromCache($hash) {
-		return $this->memcache->get($hash);
+	protected function findFromCache($hash)
+	{
+		return $this->cache->get($hash);
 	}
 
 	/**
 	 * @param $hash
 	 * @param $value
 	 */
-	protected function writeToCache($hash, $value) {
-		$this->memcache->add($hash, $value, $this->cacheTTL);
+	protected function writeToCache($hash, $value)
+	{
+		$this->cache->put($hash, $value, $this->configuration['cache']['ttl']);
 	}
 
 }
